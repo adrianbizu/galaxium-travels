@@ -1,4 +1,5 @@
 import { format, parseISO } from 'date-fns';
+import type { SeatClass } from '../types';
 
 /**
  * Format a date string to a readable format
@@ -43,6 +44,22 @@ export const formatCurrency = (amount: number): string => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+};
+
+/**
+ * Display labels for seat classes
+ */
+export const SEAT_CLASS_LABELS: Record<SeatClass, string> = {
+  economy: 'Economy',
+  business: 'Business',
+  galaxium: 'Galaxium',
+};
+
+/**
+ * Get the display label for a seat class (falls back to the raw value)
+ */
+export const formatSeatClass = (seatClass: SeatClass): string => {
+  return SEAT_CLASS_LABELS[seatClass] ?? seatClass;
 };
 
 /**

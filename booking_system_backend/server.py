@@ -8,6 +8,7 @@ from db import SessionLocal, init_db, get_db
 from seed import seed
 from services import flight, user, booking
 from schemas import FlightOut, BookingOut, UserOut, ErrorResponse, BookingRequest, UserRegistration
+from seat_classes import DEFAULT_SEAT_CLASS
 
 
 # ==================== MCP SERVER (for AI agents) ====================
@@ -19,7 +20,9 @@ mcp = FastMCP("Galaxium Booking System")
 @mcp.tool()
 def list_flights() -> list[FlightOut]:
     """List all available flights.
-    Returns a list of flights with origin, destination, times, price, and seats available."""
+    Returns a list of flights with origin, destination, times, price (the Economy base price),
+    seats_available (total across all classes), and seat_classes: a per-class list of
+    seat_class, price, and seats_available for economy, business, and galaxium."""
     db = SessionLocal()
     try:
         return flight.list_flights(db)
@@ -28,14 +31,17 @@ def list_flights() -> list[FlightOut]:
 
 
 @mcp.tool()
-def book_flight(user_id: int, name: str, flight_id: int) -> BookingOut:
+def book_flight(user_id: int, name: str, flight_id: int, seat_class: str = DEFAULT_SEAT_CLASS) -> BookingOut:
     """Book a seat on a specific flight for a user.
-    Requires user_id, name, and flight_id.
-    Decrements available seats if successful.
-    Returns booking details or raises an error if booking is not possible."""
+    Requires user_id, name, and flight_id. Optional seat_class is one of 'economy' (default),
+    'business', or 'galaxium'. The price is the flight's base price times a class multiplier:
+    economy 1x, business 1.5x, galaxium 2.5x. Seats are tracked per class, so a sold-out class
+    cannot be booked even if other classes have seats.
+    Decrements available seats in that class if successful.
+    Returns booking details (including seat_class and price_paid) or raises an error if booking is not possible."""
     db = SessionLocal()
     try:
-        result = booking.book_flight(db, user_id, name, flight_id)
+        result = booking.book_flight(db, user_id, name, flight_id, seat_class)
         if isinstance(result, ErrorResponse):
             raise Exception(result.details or result.error)
         return result
@@ -57,7 +63,7 @@ def get_bookings(user_id: int) -> list[BookingOut]:
 @mcp.tool()
 def cancel_booking(booking_id: int) -> BookingOut:
     """Cancel an existing booking by its booking_id.
-    Increments available seats for the flight if successful.
+    Increments available seats in the booking's seat class if successful.
     Returns updated booking details or raises an error if already cancelled or not found."""
     db = SessionLocal()
     try:
@@ -138,7 +144,9 @@ def health_check():
 
 @app.get("/flights", response_model=list[FlightOut], tags=["Flights"])
 def get_flights(db: Session = Depends(get_db)):
-    """List all available flights with origin, destination, times, price, and seats available."""
+    """List all available flights with origin, destination, times, price (the Economy base price),
+    seats_available (total across all classes), and seat_classes (price and seats available per
+    class: economy, business, galaxium)."""
     return flight.list_flights(db)
 
 
@@ -146,9 +154,11 @@ def get_flights(db: Session = Depends(get_db)):
 def book_flight_endpoint(request: BookingRequest, db: Session = Depends(get_db)):
     """Book a seat on a specific flight for a user.
 
-    Requires user_id, name, and flight_id. Decrements available seats if successful.
+    Requires user_id, name, and flight_id. Optional seat_class is one of 'economy' (default),
+    'business', or 'galaxium'. The price is the flight's base price times a class multiplier:
+    economy 1x, business 1.5x, galaxium 2.5x. Decrements available seats in that class if successful.
     """
-    return booking.book_flight(db, request.user_id, request.name, request.flight_id)
+    return booking.book_flight(db, request.user_id, request.name, request.flight_id, request.seat_class)
 
 
 @app.get("/bookings/{user_id}", response_model=list[BookingOut], tags=["Bookings"])
@@ -161,7 +171,7 @@ def get_user_bookings(user_id: int, db: Session = Depends(get_db)):
 def cancel_booking_endpoint(booking_id: int, db: Session = Depends(get_db)):
     """Cancel an existing booking by its booking_id.
 
-    Increments available seats for the flight if successful.
+    Increments available seats in the booking's seat class if successful.
     """
     return booking.cancel_booking(db, booking_id)
 

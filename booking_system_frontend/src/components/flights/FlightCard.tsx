@@ -1,7 +1,7 @@
 import type { Flight } from '../../types';
 import { Card, Button } from '../common';
-import { Plane, Clock, DollarSign, Users } from 'lucide-react';
-import { formatCurrency, formatDate, formatTime, calculateDuration } from '../../utils/formatters';
+import { Plane, Clock, Users } from 'lucide-react';
+import { formatCurrency, formatDate, formatTime, calculateDuration, formatSeatClass } from '../../utils/formatters';
 import { motion } from 'framer-motion';
 
 interface FlightCardProps {
@@ -10,7 +10,7 @@ interface FlightCardProps {
 }
 
 export const FlightCard = ({ flight, onBook }: FlightCardProps) => {
-  const isLowSeats = flight.seats_available <= 2;
+  // Whole flight is sold out only when every class is sold out
   const isSoldOut = flight.seats_available === 0;
 
   return (
@@ -70,21 +70,34 @@ export const FlightCard = ({ flight, onBook }: FlightCardProps) => {
             </span>
           </div>
 
-          {/* Price */}
-          <div className="flex items-center gap-2">
-            <DollarSign size={16} className="text-alien-green" />
-            <span className="text-2xl font-bold text-star-white">
-              {formatCurrency(flight.price)}
-            </span>
-            <span className="text-sm text-star-white/60">per seat</span>
-          </div>
-
-          {/* Seats Available */}
-          <div className="flex items-center gap-2">
-            <Users size={16} className={isLowSeats ? 'text-solar-orange' : 'text-star-white/70'} />
-            <span className={`text-sm ${isLowSeats ? 'text-solar-orange font-semibold' : 'text-star-white/70'}`}>
-              {isSoldOut ? 'Sold Out' : `${flight.seats_available} seats available`}
-            </span>
+          {/* Price & Seats per Class */}
+          <div className="space-y-2">
+            {flight.seat_classes.map((seatClass) => {
+              const classSoldOut = seatClass.seats_available === 0;
+              const classLowSeats = seatClass.seats_available <= 2;
+              return (
+                <div
+                  key={seatClass.seat_class}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-star-white">
+                      {formatSeatClass(seatClass.seat_class)}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Users size={14} className={classLowSeats ? 'text-solar-orange' : 'text-star-white/70'} />
+                      <span className={`text-xs ${classLowSeats ? 'text-solar-orange font-semibold' : 'text-star-white/70'}`}>
+                        {classSoldOut ? 'Sold Out' : `${seatClass.seats_available} seats available`}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-lg font-bold ${classSoldOut ? 'text-star-white/40' : 'text-star-white'}`}>
+                    {formatCurrency(seatClass.price)}
+                  </span>
+                </div>
+              );
+            })}
+            <p className="text-xs text-star-white/60">per seat</p>
           </div>
         </div>
 
