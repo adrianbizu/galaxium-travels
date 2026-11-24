@@ -5,10 +5,11 @@ A complete full-stack application for booking interplanetary space travel, featu
 ## 🌟 Features
 
 - **Modern Space-Themed UI** - Beautiful, responsive interface with animated starfield
-- **Full Booking System** - Browse flights, make bookings, manage reservations
-- **Dual Protocol Backend** - REST API and MCP (Model Context Protocol) support
+- **Full Booking System** - Browse flights, choose seat class, make bookings, manage reservations
+- **Three Seat Classes** - Economy (1x base price), Business (1.5x), and Galaxium (2.5x) with separate seat availability per flight
+- **Dual Protocol Backend** - REST API and MCP (Model Context Protocol) support with optional `seat_class` parameter (defaults to `economy`)
 - **Type-Safe** - Full TypeScript frontend and Python type hints
-- **Real-Time Updates** - Live flight availability and booking status
+- **Real-Time Updates** - Live per-class flight availability and booking status
 - **User Management** - Simple name/email authentication
 - **Production Ready** - Optimized builds and comprehensive error handling
 
@@ -105,13 +106,27 @@ See [booking_system_frontend/README.md](booking_system_frontend/README.md) for:
 
 ## 🎯 User Guide
 
+### Seat Classes & Pricing
+
+Each flight tracks seat availability independently across three seat classes. Prices are calculated dynamically from the flight's base (Economy) price using multipliers:
+
+| Seat Class | `seat_class` Identifier | Price Multiplier | Description |
+|------------|-------------------------|------------------|-------------|
+| **Economy** | `economy` | 1.0x (base price) | Standard interplanetary travel (default) |
+| **Business** | `business` | 1.5x base price | Enhanced comfort and amenities |
+| **Galaxium** | `galaxium` | 2.5x base price | Premium luxury spaceflight experience |
+
+- **APIs & MCP**: The `seat_class` parameter is optional when booking via REST (`/api/book`) or MCP (`book_flight`) and defaults to `economy`.
+- **Frontend UI**: Flight cards display pricing and remaining seats for every class. The booking modal features a seat class checkbox-style option group showing real-time pricing and availability (defaulting to the cheapest available class, with sold-out options disabled).
+- **Price Snapshot**: Bookings store the selected `seat_class` and exact `price_paid` at booking time. Cancelling a booking restores seat availability to that specific class.
+
 ### Booking a Flight
 
-1. **Browse Flights** - Navigate to the Flights page to see all available routes
+1. **Browse Flights** - Navigate to the Flights page to view routes with per-class pricing and seat availability
 2. **Search & Filter** - Use the search bar to find specific destinations
 3. **Sign In/Register** - Click "Book Now" and enter your name and email
-4. **Confirm Booking** - Review flight details and confirm your reservation
-5. **Manage Bookings** - View and cancel bookings from "My Bookings" page
+4. **Select Seat Class & Confirm** - Choose your desired seat class from the option group and confirm your reservation
+5. **Manage Bookings** - View booked class, price paid, and cancel bookings from the "My Bookings" page
 
 ### Demo Data
 

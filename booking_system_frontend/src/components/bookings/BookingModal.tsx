@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import type { Flight } from '../../types';
+import { useEffect, useState } from 'react';
+import type { Flight, SeatClass } from '../../types';
 import { Modal, Button } from '../common';
-import { Plane, Calendar, Clock, DollarSign } from 'lucide-react';
-import { formatCurrency, formatDate, calculateDuration } from '../../utils/formatters';
+import { Plane, Calendar, Clock, DollarSign, Check } from 'lucide-react';
+import { formatCurrency, formatDate, calculateDuration, formatSeatClass } from '../../utils/formatters';
 import { bookFlight, isErrorResponse } from '../../services/api';
 import { useUser } from '../../hooks/useUser';
 import toast from 'react-hot-toast';
@@ -17,8 +17,21 @@ interface BookingModalProps {
 export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModalProps) => {
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<SeatClass>('economy');
+
+  // Default to the cheapest class that still has seats whenever the modal opens or the flight changes
+  useEffect(() => {
+    if (!flight) return;
+    const available = flight.seat_classes.filter((c) => c.seats_available > 0);
+    if (available.length > 0) {
+      setSelectedClass(available.reduce((a, b) => (b.price < a.price ? b : a)).seat_class);
+    }
+  }, [flight, isOpen]);
 
   if (!flight) return null;
+
+  const selectedPrice =
+    flight.seat_classes.find((c) => c.seat_class === selectedClass)?.price ?? flight.price;
 
   const handleConfirmBooking = async () => {
     if (!user) {
@@ -33,6 +46,7 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
         user_id: user.user_id,
         name: user.name,
         flight_id: flight.flight_id,
+        seat_class: selectedClass,
       });
 
       if (isErrorResponse(result)) {
@@ -110,6 +124,60 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
           </div>
         </div>
 
+        {/* Seat Class */}
+        <fieldset disabled={isLoading}>
+          <legend className="block text-sm font-medium text-star-white mb-2">
+            Seat Class
+          </legend>
+          <div className="space-y-2" role="radiogroup" aria-label="Seat class">
+            {flight.seat_classes.map((c) => {
+              const soldOut = c.seats_available === 0;
+              const selected = selectedClass === c.seat_class;
+              return (
+                <label
+                  key={c.seat_class}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-cosmic-purple ${
+                    soldOut
+                      ? 'cursor-not-allowed border-white/10 bg-white/5 opacity-50'
+                      : selected
+                        ? 'cursor-pointer border-cosmic-purple bg-cosmic-purple/20'
+                        : 'cursor-pointer border-white/10 bg-white/5 hover:border-cosmic-purple/60 hover:bg-white/10'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="seat-class"
+                    value={c.seat_class}
+                    checked={selected}
+                    disabled={soldOut}
+                    onChange={() => setSelectedClass(c.seat_class)}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors duration-200 ${
+                      selected ? 'border-cosmic-purple bg-cosmic-purple' : 'border-white/30 bg-transparent'
+                    }`}
+                  >
+                    {selected && <Check size={14} className="text-white" />}
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-star-white">
+                      {formatSeatClass(c.seat_class)}
+                    </span>
+                    <span className="block text-xs text-star-white/60">
+                      {soldOut ? 'Sold out' : `${c.seats_available} left`}
+                    </span>
+                  </span>
+                  <span className="text-lg font-bold text-star-white">
+                    {formatCurrency(c.price)}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
         {/* Passenger Info */}
         {user && (
           <div className="glass-card p-4 bg-white/5">
@@ -128,7 +196,7 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
             <span className="text-white font-semibold">Total Price</span>
           </div>
           <span className="text-2xl font-bold text-white">
-            {formatCurrency(flight.price)}
+            {formatCurrency(selectedPrice)}
           </span>
         </div>
 

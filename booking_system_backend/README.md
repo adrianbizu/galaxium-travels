@@ -8,6 +8,7 @@ A unified booking system for Galaxium Travels that serves both **REST API** and 
 - **Single Server**: One codebase, one port, both protocols
 - **SQLite Database**: Simple file-based storage for demos
 - **Demo Data**: Pre-seeded with space travel flights and users
+- **Seat Classes**: Economy, Business and Galaxium, each with its own price and seat availability per flight
 
 ## Quick Start
 
@@ -31,12 +32,26 @@ The server starts on port **8080** with:
 
 ## API Reference
 
+### Seat Classes
+
+Every flight has three seat classes. Seats are tracked separately per class, and the price of a class is the flight's base (Economy) price times a multiplier (rounded to an integer):
+
+| Class | `seat_class` value | Multiplier |
+|-------|--------------------|------------|
+| Economy | `economy` (default) | 1x |
+| Business | `business` | 1.5x |
+| Galaxium | `galaxium` | 2.5x |
+
+- `GET /flights` returns `price` (the Economy base price), `seats_available` (total across all classes) and `seat_classes`, a list of `{seat_class, price, seats_available}` entries, one per class.
+- Booking accepts an optional `seat_class` (defaults to `economy`). An unknown class returns `INVALID_SEAT_CLASS`; a sold-out class returns `NO_SEATS_AVAILABLE` even if other classes still have seats.
+- A booking stores its `seat_class` and `price_paid` (a snapshot of the price at booking time). Cancelling restores the seat to the booked class.
+
 ### REST Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/flights` | List all available flights |
-| POST | `/api/book` | Book a flight |
+| GET | `/api/flights` | List all available flights with per-class price and availability |
+| POST | `/api/book` | Book a flight (optional `seat_class`, default `economy`) |
 | GET | `/api/bookings/{user_id}` | Get user's bookings |
 | POST | `/api/cancel/{booking_id}` | Cancel a booking |
 | POST | `/api/register` | Register a new user |
@@ -46,8 +61,8 @@ The server starts on port **8080** with:
 
 | Tool | Description |
 |------|-------------|
-| `list_flights` | List all available flights |
-| `book_flight` | Book a seat on a flight |
+| `list_flights` | List all available flights with per-class price and availability |
+| `book_flight` | Book a seat on a flight (optional `seat_class`, default `economy`) |
 | `get_bookings` | Get user's bookings |
 | `cancel_booking` | Cancel a booking |
 | `register_user` | Register a new user |
@@ -66,10 +81,15 @@ curl -X POST http://localhost:8080/api/register \
   -H "Content-Type: application/json" \
   -d '{"name": "John Doe", "email": "john@example.com"}'
 
-# Book a flight
+# Book a flight (seat_class is optional, defaults to economy)
 curl -X POST http://localhost:8080/api/book \
   -H "Content-Type: application/json" \
   -d '{"user_id": 1, "name": "Alice", "flight_id": 1}'
+
+# Book a Business class seat
+curl -X POST http://localhost:8080/api/book \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 1, "name": "Alice", "flight_id": 1, "seat_class": "business"}'
 
 # Get bookings
 curl http://localhost:8080/api/bookings/1
@@ -86,6 +106,7 @@ Connect to `http://localhost:8080/mcp` and use the available tools:
 list_flights()
 register_user(name="John Doe", email="john@example.com")
 book_flight(user_id=1, name="Alice", flight_id=1)
+book_flight(user_id=1, name="Alice", flight_id=1, seat_class="galaxium")
 get_bookings(user_id=1)
 cancel_booking(booking_id=1)
 ```
@@ -109,6 +130,7 @@ pytest tests/test_rest.py
 ```
 booking_system/
 ├── server.py          # Main server - exposes REST & MCP
+├── seat_classes.py    # Seat classes, multipliers and price helper
 ├── services/          # Business logic layer
 │   ├── booking.py     # Booking operations
 │   ├── flight.py      # Flight operations
@@ -131,7 +153,7 @@ The server seeds the database with:
 - **10 users**: Alice, Bob, Charlie, Diana, Eve, Frank, Grace, Heidi, Ivan, Judy
 - **10 flights**: Interplanetary routes (Earth, Mars, Moon, Venus, Jupiter, Europa, Pluto)
 - **20 bookings**: Random bookings across users and flights
-doc
+
 ## Docker
 
 ```bash

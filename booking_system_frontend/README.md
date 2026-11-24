@@ -6,10 +6,11 @@ A modern, space-themed frontend for the Galaxium Travels interplanetary booking 
 
 - **Modern UI/UX**: Beautiful space-themed interface with animated starfield background
 - **Responsive Design**: Works seamlessly on mobile, tablet, and desktop
-- **Real-time Updates**: Live flight availability and booking status
+- **Seat Classes**: Per-class pricing and availability display (Economy 1x, Business 1.5x, Galaxium 2.5x)
+- **Real-time Updates**: Live per-class flight availability and booking status
 - **User Management**: Simple name/email authentication
-- **Flight Booking**: Browse, search, and book interplanetary flights
-- **Booking Management**: View and cancel your bookings
+- **Flight Booking**: Browse, search, choose seat class, and book interplanetary flights
+- **Booking Management**: View class and price paid, and cancel your bookings
 - **Toast Notifications**: User-friendly feedback for all actions
 - **Smooth Animations**: Framer Motion powered transitions
 
@@ -130,21 +131,21 @@ All components follow a consistent design pattern with:
 
 The frontend connects to the backend API with the following endpoints:
 
-- `GET /flights` - List all flights
+- `GET /flights` - List all flights with per-class price and availability breakdown
 - `POST /register` - Register new user
 - `GET /user?name=...&email=...` - Get user by credentials
-- `POST /book` - Book a flight
-- `GET /bookings/{user_id}` - Get user's bookings
+- `POST /book` - Book a flight with optional `seat_class`
+- `GET /bookings/{user_id}` - Get user's bookings with `seat_class` and `price_paid`
 - `POST /cancel/{booking_id}` - Cancel a booking
 
 ## 🎯 User Flows
 
 ### Booking a Flight
 
-1. Browse available flights on the Flights page
+1. Browse available flights on the Flights page (viewing Economy, Business, and Galaxium pricing and seats)
 2. Click "Book Now" on desired flight
 3. Sign in or register (if not already logged in)
-4. Confirm booking details
+4. Select seat class from the option group and confirm booking details
 5. Receive confirmation and view in My Bookings
 
 ### Managing Bookings

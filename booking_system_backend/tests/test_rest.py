@@ -24,7 +24,9 @@ class TestFlightsEndpoint:
             departure_time="2099-01-01T09:00:00Z",
             arrival_time="2099-01-01T17:00:00Z",
             price=1000000,
-            seats_available=5
+            seats_economy=3,
+            seats_business=1,
+            seats_galaxium=1
         ))
         db_session.commit()
 
@@ -102,7 +104,9 @@ class TestBookEndpoint:
             departure_time="2099-01-01T09:00:00Z",
             arrival_time="2099-01-01T17:00:00Z",
             price=1000000,
-            seats_available=5
+            seats_economy=3,
+            seats_business=1,
+            seats_galaxium=1
         ))
         db_session.commit()
         flight = db_session.query(Flight).first()
@@ -152,7 +156,9 @@ class TestBookingsEndpoint:
             departure_time="2099-01-01T09:00:00Z",
             arrival_time="2099-01-01T17:00:00Z",
             price=1000000,
-            seats_available=5
+            seats_economy=3,
+            seats_business=1,
+            seats_galaxium=1
         ))
         db_session.commit()
         flight = db_session.query(Flight).first()
@@ -161,7 +167,9 @@ class TestBookingsEndpoint:
             user_id=user_id,
             flight_id=flight.flight_id,
             status="booked",
-            booking_time="2099-01-01T10:00:00Z"
+            booking_time="2099-01-01T10:00:00Z",
+            seat_class="economy",
+            price_paid=1000000
         ))
         db_session.commit()
 
@@ -194,7 +202,9 @@ class TestCancelEndpoint:
             departure_time="2099-01-01T09:00:00Z",
             arrival_time="2099-01-01T17:00:00Z",
             price=1000000,
-            seats_available=4
+            seats_economy=2,
+            seats_business=1,
+            seats_galaxium=1
         ))
         db_session.commit()
         flight = db_session.query(Flight).first()
@@ -203,7 +213,9 @@ class TestCancelEndpoint:
             user_id=user_id,
             flight_id=flight.flight_id,
             status="booked",
-            booking_time="2099-01-01T10:00:00Z"
+            booking_time="2099-01-01T10:00:00Z",
+            seat_class="economy",
+            price_paid=1000000
         ))
         db_session.commit()
         booking = db_session.query(Booking).first()
@@ -230,3 +242,172 @@ class TestHealthEndpoint:
         response = client.get("/")
         assert response.status_code == 200
         assert response.json() == {"status": "OK"}
+
+
+class TestSeatClassEndpoints:
+    """Test seat class behaviour through the REST API."""
+
+    def _setup(self, client, db_session, sample_user_data, economy=3, business=2, galaxium=1):
+        """Register a user and add a flight with the given per-class seats."""
+        user_id = client.post("/register", json=sample_user_data).json()["user_id"]
+        db_session.add(Flight(
+            origin="Earth",
+            destination="Mars",
+            departure_time="2099-01-01T09:00:00Z",
+            arrival_time="2099-01-01T17:00:00Z",
+            price=1000000,
+            seats_economy=economy,
+            seats_business=business,
+            seats_galaxium=galaxium
+        ))
+        db_session.commit()
+        return user_id, db_session.query(Flight).first().flight_id
+
+    def _seats_by_class(self, client):
+        """Return {seat_class: seats_available} for the first flight from /flights."""
+        flight = client.get("/flights").json()[0]
+        return {c["seat_class"]: c["seats_available"] for c in flight["seat_classes"]}
+
+    def test_get_flights_per_class_breakdown(self, client, db_session):
+        """Test /flights returns the per-class breakdown and the total."""
+        db_session.add(Flight(
+            origin="Earth",
+            destination="Mars",
+            departure_time="2099-01-01T09:00:00Z",
+            arrival_time="2099-01-01T17:00:00Z",
+            price=1000000,
+            seats_economy=3,
+            seats_business=1,
+            seats_galaxium=0
+        ))
+        db_session.commit()
+
+        response = client.get("/flights")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["price"] == 1000000
+        assert data[0]["seats_available"] == 4
+        assert data[0]["seat_classes"] == [
+            {"seat_class": "economy", "price": 1000000, "seats_available": 3},
+            {"seat_class": "business", "price": 1500000, "seats_available": 1},
+            {"seat_class": "galaxium", "price": 2500000, "seats_available": 0},
+        ]
+
+    def test_book_flight_defaults_to_economy(self, client, db_session, sample_user_data):
+        """Test booking without seat_class books economy and returns class and price."""
+        user_id, flight_id = self._setup(client, db_session, sample_user_data)
+
+        response = client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "booked"
+        assert data["seat_class"] == "economy"
+        assert data["price_paid"] == 1000000
+        assert self._seats_by_class(client) == {"economy": 2, "business": 2, "galaxium": 1}
+
+    @pytest.mark.parametrize("seat_class,expected_price", [
+        ("economy", 1000000),
+        ("business", 1500000),
+        ("galaxium", 2500000),
+    ])
+    def test_book_flight_price_is_base_times_multiplier(
+        self, client, db_session, sample_user_data, seat_class, expected_price
+    ):
+        """Test price_paid equals base price x class multiplier (1x, 1.5x, 2.5x)."""
+        user_id, flight_id = self._setup(client, db_session, sample_user_data)
+
+        response = client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id,
+            "seat_class": seat_class
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["seat_class"] == seat_class
+        assert data["price_paid"] == expected_price
+
+    def test_book_flight_sold_out_class(self, client, db_session, sample_user_data):
+        """Test a sold-out class returns NO_SEATS_AVAILABLE while others still have seats."""
+        user_id, flight_id = self._setup(client, db_session, sample_user_data, galaxium=0)
+
+        response = client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id,
+            "seat_class": "galaxium"
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] == False
+        assert data["error_code"] == "NO_SEATS_AVAILABLE"
+        assert self._seats_by_class(client) == {"economy": 3, "business": 2, "galaxium": 0}
+
+        response = client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id,
+            "seat_class": "business"
+        })
+        assert response.json()["status"] == "booked"
+
+    def test_book_flight_invalid_seat_class(self, client, db_session, sample_user_data):
+        """Test an unknown seat class returns INVALID_SEAT_CLASS."""
+        user_id, flight_id = self._setup(client, db_session, sample_user_data)
+
+        response = client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id,
+            "seat_class": "first"
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] == False
+        assert data["error_code"] == "INVALID_SEAT_CLASS"
+        assert self._seats_by_class(client) == {"economy": 3, "business": 2, "galaxium": 1}
+
+    def test_cancel_booking_restores_booked_class(self, client, db_session, sample_user_data):
+        """Test cancelling a booking restores the seat to the booked class."""
+        user_id, flight_id = self._setup(client, db_session, sample_user_data)
+
+        booked = client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id,
+            "seat_class": "galaxium"
+        }).json()
+        assert self._seats_by_class(client) == {"economy": 3, "business": 2, "galaxium": 0}
+
+        response = client.post(f"/cancel/{booked['booking_id']}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+        assert data["seat_class"] == "galaxium"
+        assert self._seats_by_class(client) == {"economy": 3, "business": 2, "galaxium": 1}
+
+    def test_get_bookings_includes_class_and_price(self, client, db_session, sample_user_data):
+        """Test /bookings/{user_id} returns seat_class and price_paid."""
+        user_id, flight_id = self._setup(client, db_session, sample_user_data)
+        client.post("/book", json={
+            "user_id": user_id,
+            "name": sample_user_data["name"],
+            "flight_id": flight_id,
+            "seat_class": "business"
+        })
+
+        response = client.get(f"/bookings/{user_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["seat_class"] == "business"
+        assert data[0]["price_paid"] == 1500000

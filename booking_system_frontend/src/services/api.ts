@@ -72,7 +72,7 @@ export const getUserByCredentials = async (
 // ==================== Booking Endpoints ====================
 
 /**
- * Book a flight
+ * Book a flight. `data.seat_class` is sent as-is (backend defaults to 'economy')
  */
 export const bookFlight = async (
   data: BookingRequest
