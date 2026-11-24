@@ -145,3 +145,7 @@ booking_system_rest/.venv/
 galaxium-booking-web-app/.venv/
 architecture/.$galaxim-travel-infrastructure.drawio.dtmp
 architecture/.$galaxim-travel-infrastructure.drawio.bkp
+
+# GitHub issues MCP server
+github-issues-mcp-server/github-config.json
+github-issues-mcp-server/node_modules/

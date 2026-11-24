@@ -1,0 +1,8 @@
+{
+  "defaultRepository": "https://github.com/owner/repo",
+  "defaultToken": "",
+  "repositories": {
+    "https://github.com/owner/repo": { "token": "" },
+    "other-owner/other-repo": { "token": "" }
+  }
+}
