@@ -145,7 +145,7 @@ The frontend connects to the backend API with the following endpoints:
 1. Browse available flights on the Flights page (viewing Economy, Business, and Galaxium pricing and seats)
 2. Click "Book Now" on desired flight
 3. Sign in or register (if not already logged in)
-4. Select seat class from the dropdown and confirm booking details
+4. Select seat class from the option group and confirm booking details
 5. Receive confirmation and view in My Bookings
 
 ### Managing Bookings

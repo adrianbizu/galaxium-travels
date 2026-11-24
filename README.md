@@ -117,7 +117,7 @@ Each flight tracks seat availability independently across three seat classes. Pr
 | **Galaxium** | `galaxium` | 2.5x base price | Premium luxury spaceflight experience |
 
 - **APIs & MCP**: The `seat_class` parameter is optional when booking via REST (`/api/book`) or MCP (`book_flight`) and defaults to `economy`.
-- **Frontend UI**: Flight cards display pricing and remaining seats for every class. The booking modal features a seat class dropdown showing real-time pricing and availability (defaulting to the cheapest available class, with sold-out options disabled).
+- **Frontend UI**: Flight cards display pricing and remaining seats for every class. The booking modal features a seat class checkbox-style option group showing real-time pricing and availability (defaulting to the cheapest available class, with sold-out options disabled).
 - **Price Snapshot**: Bookings store the selected `seat_class` and exact `price_paid` at booking time. Cancelling a booking restores seat availability to that specific class.
 
 ### Booking a Flight
@@ -125,7 +125,7 @@ Each flight tracks seat availability independently across three seat classes. Pr
 1. **Browse Flights** - Navigate to the Flights page to view routes with per-class pricing and seat availability
 2. **Search & Filter** - Use the search bar to find specific destinations
 3. **Sign In/Register** - Click "Book Now" and enter your name and email
-4. **Select Seat Class & Confirm** - Choose your desired seat class from the dropdown and confirm your reservation
+4. **Select Seat Class & Confirm** - Choose your desired seat class from the option group and confirm your reservation
 5. **Manage Bookings** - View booked class, price paid, and cancel bookings from the "My Bookings" page
 
 ### Demo Data

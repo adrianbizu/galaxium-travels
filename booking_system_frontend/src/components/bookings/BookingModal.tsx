@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Flight, SeatClass } from '../../types';
 import { Modal, Button } from '../common';
-import { Plane, Calendar, Clock, DollarSign } from 'lucide-react';
+import { Plane, Calendar, Clock, DollarSign, Check } from 'lucide-react';
 import { formatCurrency, formatDate, calculateDuration, formatSeatClass } from '../../utils/formatters';
 import { bookFlight, isErrorResponse } from '../../services/api';
 import { useUser } from '../../hooks/useUser';
@@ -125,34 +125,58 @@ export const BookingModal = ({ isOpen, onClose, flight, onSuccess }: BookingModa
         </div>
 
         {/* Seat Class */}
-        <div>
-          <label
-            htmlFor="seat-class"
-            className="block text-sm font-medium text-star-white mb-2"
-          >
+        <fieldset disabled={isLoading}>
+          <legend className="block text-sm font-medium text-star-white mb-2">
             Seat Class
-          </label>
-          <select
-            id="seat-class"
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value as SeatClass)}
-            disabled={isLoading}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-star-white focus:outline-none focus:ring-2 focus:ring-cosmic-purple focus:border-transparent transition-all duration-200"
-          >
-            {flight.seat_classes.map((c) => (
-              <option
-                key={c.seat_class}
-                value={c.seat_class}
-                disabled={c.seats_available === 0}
-                className="bg-space-blue text-star-white"
-              >
-                {c.seats_available === 0
-                  ? `${formatSeatClass(c.seat_class)} — ${formatCurrency(c.price)} (sold out)`
-                  : `${formatSeatClass(c.seat_class)} — ${formatCurrency(c.price)} (${c.seats_available} left)`}
-              </option>
-            ))}
-          </select>
-        </div>
+          </legend>
+          <div className="space-y-2" role="radiogroup" aria-label="Seat class">
+            {flight.seat_classes.map((c) => {
+              const soldOut = c.seats_available === 0;
+              const selected = selectedClass === c.seat_class;
+              return (
+                <label
+                  key={c.seat_class}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-cosmic-purple ${
+                    soldOut
+                      ? 'cursor-not-allowed border-white/10 bg-white/5 opacity-50'
+                      : selected
+                        ? 'cursor-pointer border-cosmic-purple bg-cosmic-purple/20'
+                        : 'cursor-pointer border-white/10 bg-white/5 hover:border-cosmic-purple/60 hover:bg-white/10'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="seat-class"
+                    value={c.seat_class}
+                    checked={selected}
+                    disabled={soldOut}
+                    onChange={() => setSelectedClass(c.seat_class)}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors duration-200 ${
+                      selected ? 'border-cosmic-purple bg-cosmic-purple' : 'border-white/30 bg-transparent'
+                    }`}
+                  >
+                    {selected && <Check size={14} className="text-white" />}
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-star-white">
+                      {formatSeatClass(c.seat_class)}
+                    </span>
+                    <span className="block text-xs text-star-white/60">
+                      {soldOut ? 'Sold out' : `${c.seats_available} left`}
+                    </span>
+                  </span>
+                  <span className="text-lg font-bold text-star-white">
+                    {formatCurrency(c.price)}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
 
         {/* Passenger Info */}
         {user && (
